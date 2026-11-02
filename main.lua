@@ -18,6 +18,37 @@ local WindUI = loadstring(
 
 WindUI:SetFont("rbxassetid://12187371324")
 
+local HttpService = game:GetService("HttpService")
+
+local ConfigFile = "SyniumHub/settings.json"
+
+local SettingsData = {
+    Theme = "OLED",
+    AutoTheme = false,
+    HubMusic = false
+}
+
+if isfile and isfile(ConfigFile) then
+    local Success, Data = pcall(function()
+        return HttpService:JSONDecode(readfile(ConfigFile))
+    end)
+
+    if Success then
+        for Key, Value in pairs(Data) do
+            SettingsData[Key] = Value
+        end
+    end
+end
+
+local function SaveSettings()
+    if writefile then
+        writefile(
+            ConfigFile,
+            HttpService:JSONEncode(SettingsData)
+        )
+    end
+end
+
 ---------------------------------------------------------------------
 -- THEME
 ---------------------------------------------------------------------
@@ -58,7 +89,7 @@ local Window = WindUI:CreateWindow({
     Author = "Premium Script Suite",
     Folder = "SyniumHub",
 
-    Theme = "OLED",
+    Theme = SettingsData.Theme,
     Transparent = true,
     ToggleKey = Enum.KeyCode.M,
 
@@ -633,6 +664,9 @@ Settings:Dropdown({
     Flag = "theme_select",
 
     Callback = function(Theme)
+        SettingsData.Theme = Theme
+        SaveSettings()
+
         WindUI:SetTheme(Theme)
 
         Window:Notify({
@@ -641,6 +675,137 @@ Settings:Dropdown({
         })
     end
 })
+
+local sound = Instance.new("Sound")
+sound.SoundId = "rbxassetid://77446979841289"
+sound.Looped = true
+sound.Volume = 0
+sound.Parent = workspace
+
+local fadeSpeed = 0.05
+local musicEnabled = false
+local started = false
+
+local function fadeIn()
+    task.spawn(function()
+        if not started then
+            started = true
+            sound:Play()
+        else
+            sound:Resume()
+        end
+
+        while sound.Volume < 1 and musicEnabled do
+            sound.Volume = math.min(sound.Volume + fadeSpeed, 1)
+            task.wait()
+        end
+    end)
+end
+
+local function fadeOut()
+    task.spawn(function()
+        while sound.Volume > 0 and not musicEnabled do
+            sound.Volume = math.max(sound.Volume - fadeSpeed, 0)
+            task.wait()
+        end
+
+        if sound.Volume <= 0 then
+            sound:Pause()
+        end
+    end)
+end
+
+Settings:Toggle({
+    Title = "Hub Music",
+    Desc = "Play background music",
+
+    Value = false,
+    Flag = "hub_music",
+
+    Callback = function(Value)
+        musicEnabled = Value
+
+        if Value then
+            fadeIn()
+        else
+            fadeOut()
+        end
+    end
+})
+
+Window:OnOpen(function()
+    if musicEnabled then
+        fadeIn()
+    end
+end)
+
+Window:OnClose(function()
+    if musicEnabled then
+        task.spawn(function()
+            musicEnabled = false
+            fadeOut()
+            task.wait(1)
+            musicEnabled = true
+        end)
+    end
+
+    WindUI:Notify({
+        Title = "GUI Closed",
+        Content = "Press M to reopen the GUI!",
+        Duration = 5
+    })
+end)
+
+local AutoTheme = false
+
+local function UpdateTheme()
+    if not AutoTheme then
+        return
+    end
+
+    local Hour = tonumber(os.date("%H"))
+
+    if Hour >= 8 and Hour < 17 then
+        WindUI:SetTheme("Light")
+    else
+        WindUI:SetTheme("OLED")
+    end
+end
+
+Settings:Toggle({
+    Title = "Auto Theme",
+    Desc = "Light during the day, OLED at night",
+
+    Value = false,
+    Locked = false,
+    Flag = "auto_theme",
+
+    Callback = function(Value)
+        AutoTheme = Value
+
+        if Value then
+            UpdateTheme()
+
+            WindUI:Notify({
+                Title = "Auto Theme",
+                Content = "Enabled",
+                Duration = 3
+            })
+        else
+            WindUI:Notify({
+                Title = "Auto Theme",
+                Content = "Disabled",
+                Duration = 3
+            })
+        end
+    end
+})
+
+task.spawn(function()
+    while task.wait(60) do
+        UpdateTheme()
+    end
+end)
 
 ---------------------------------------------------------------------
 -- Credits
