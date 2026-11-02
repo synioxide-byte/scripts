@@ -260,7 +260,7 @@ MovementSection:Button({
     Icon = "plane",
 
     Callback = function()
-        -- TODO
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/synioxide-byte/scripts/main/quickfly.lua"))()
     end
 })
 
@@ -270,7 +270,31 @@ MovementSection:Button({
     Icon = "move-3d",
 
     Callback = function()
-        -- TODO
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/synioxide-byte/scripts/main/sem.lua"))()
+    end
+})
+
+---------------------------------------------------------------------
+-- Character
+---------------------------------------------------------------------
+
+CharacterSection:Button({
+    Title = "KFling",
+    Desc = "Lets you fling yourself precisely with the keybind K",
+    Icon = "spin",
+
+    Callback = function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/synioxide-byte/scripts/main/KFling.lua"))()
+    end
+})
+
+CharacterSection:Button({
+    Title = "Fall",
+    Desc = "Lets you push yourself down, or drive on the ground by holding down L",
+    Icon = "fall",
+
+    Callback = function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/synioxide-byte/scripts/main/Fall.lua"))()
     end
 })
 
@@ -397,7 +421,17 @@ UniversalUtilitySection:Button({
     Icon = "hand",
 
     Callback = function()
-        -- TODO
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/synioxide-byte/scripts/main/grabtool.lua"))()
+    end
+})
+
+UniversalUtilitySection:Button({
+    Title = "Universal FE",
+    Desc = "A Hub with FE scripts.",
+    Icon = "globe",
+
+    Callback = function()
+        loadstring(game:HttpGet"https://you.whimper.xyz/UFE.lua")()
     end
 })
 
@@ -411,7 +445,7 @@ AdminSection:Button({
     Icon = "terminal",
 
     Callback = function()
-        -- TODO
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/ltseverydayyou/Nameless-Admin/main/Source.lua"))()
     end
 })
 
@@ -421,7 +455,7 @@ AdminSection:Button({
     Icon = "shield-check",
 
     Callback = function()
-        -- TODO
+        loadstring(game:HttpGet("https://rawscripts.net/raw/Universal-Script-Infinite-Yield-FE-239454"))()
     end
 })
 
@@ -435,7 +469,7 @@ FunSection:Button({
     Icon = "package",
 
     Callback = function()
-        -- TODO
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/synioxide-byte/scripts/main/gravel.cc.lua"))()
     end
 })
 
@@ -445,7 +479,7 @@ FunSection:Button({
     Icon = "music-4",
 
     Callback = function()
-        -- TODO
+        loadstring(game:HttpGet("https://scriptblox.com/raw/Universal-Script-7yd7-I-Emote-Script-48024"))()
     end
 })
 
@@ -519,5 +553,32 @@ ServerSection:Button({
 
     Callback = function()
         Players.LocalPlayer:Kick("Left via Synium Hub")
+    end
+})
+
+---------------------------------------------------------------------
+-- MM2
+---------------------------------------------------------------------
+
+MM2:Button({
+    Title = "YARHM",
+    Desc = "Overall the best MM2/Universal Script.",
+    Icon = "knife",
+
+    Callback = function()
+        local src = ""
+        pcall(function()
+            src = game:HttpGet("https://yarhm.com", false)
+        end)
+
+        if src == "" then
+            window:Notify({
+                title = "YARHM Outage",
+                content = "Using Offline version."
+            })
+            src = game:HttpGet("https://raw.githubusercontent.com/Joystickplays/psychic-octo-invention/main/source/yarhm/1.21/yarhm.lua", false)
+        end
+
+        loadstring(src)()
     end
 })
