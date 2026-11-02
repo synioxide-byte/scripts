@@ -44,6 +44,14 @@ WindUI:AddTheme({
 -- WINDOW
 ---------------------------------------------------------------------
 
+--// Duplicate UI prevention
+pcall(function()
+    if getgenv().SyniumWindow then
+        getgenv().SyniumWindow:Destroy()
+    end
+end)
+
+--// Window
 local Window = WindUI:CreateWindow({
     Title = "Synium Hub",
     Icon = "sparkles",
@@ -52,6 +60,7 @@ local Window = WindUI:CreateWindow({
 
     Theme = "OLED",
     Transparent = true,
+    ToggleKey = Enum.KeyCode.M,
 
     Size = UDim2.fromOffset(600, 500),
     MinSize = Vector2.new(560, 350),
@@ -75,6 +84,15 @@ local Window = WindUI:CreateWindow({
         end,
     },
 })
+getgenv().SyniumWindow = Window
+
+Window:OnClose(function()
+    WindUI:Notify({
+        Title = "GUI Closed",
+        Content = "Press M to reopen the GUI!",
+        Duration = 5
+    })
+end)
 
 ---------------------------------------------------------------------
 -- SIDEBAR CATEGORIES
@@ -581,4 +599,64 @@ MM2:Button({
 
         loadstring(src)()
     end
+})
+
+---------------------------------------------------------------------
+-- Settings
+---------------------------------------------------------------------
+
+Settings:Dropdown({
+    Title = "Theme",
+    Desc = "Select a theme",
+
+    Values = {
+        "Dark",
+        "Light",
+        "Rose",
+        "Plant",
+        "Red",
+        "Indigo",
+        "Sky",
+        "Violet",
+        "Amber",
+        "Emerald",
+        "Midnight",
+        "Crimson",
+        "Mellowsi",
+        "Rainbow",
+        "OLED"
+    },
+
+    Value = "OLED",
+    Multi = false,
+    Locked = false,
+    Flag = "theme_select",
+
+    Callback = function(Theme)
+        WindUI:SetTheme(Theme)
+
+        Window:Notify({
+            Title = "Theme Changed",
+            Content = Theme
+        })
+    end
+})
+
+---------------------------------------------------------------------
+-- Credits
+---------------------------------------------------------------------
+
+Credits:Paragraph({
+    Title = "Microsoft Copilot",
+    Desc = "Structuring the hub. Helping with code and giving information."
+})
+
+Credits:Paragraph({
+    Title = "Footagesus",
+    Desc = "Making WindUI, so making Synium Hub possible"
+})
+
+Credits:Paragraph({
+    Title = "Synioxide",
+    Desc = "Making Synium Hub."
 })
