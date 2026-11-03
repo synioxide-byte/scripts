@@ -21,11 +21,15 @@ WindUI:SetFont("rbxassetid://12187371324")
 local HttpService = game:GetService("HttpService")
 
 local ConfigFile = "SyniumHub/settings.json"
+if makefolder and not isfolder("SyniumHub") then
+    makefolder("SyniumHub")
+end
 
 local SettingsData = {
     Theme = "OLED",
     AutoTheme = false,
-    HubMusic = false
+    HubMusic = false,
+    UIScale = "110%",
 }
 
 if isfile and isfile(ConfigFile) then
@@ -70,6 +74,10 @@ WindUI:AddTheme({
     Button = Color3.fromHex("#6D28D9"),
     ElementBackground = Color3.fromHex("#1A092B"),
 })
+
+pcall(function()
+    WindUI:SetTheme(SettingsData.Theme)
+end)
 
 ---------------------------------------------------------------------
 -- WINDOW
@@ -117,12 +125,19 @@ local Window = WindUI:CreateWindow({
 })
 getgenv().SyniumWindow = Window
 
-Window:OnClose(function()
-    WindUI:Notify({
-        Title = "GUI Closed",
-        Content = "Press M to reopen the GUI!",
-        Duration = 5
-    })
+local ScaleValues = {
+    ["75%"] = 0.75,
+    ["90%"] = 0.9,
+    ["100%"] = 1,
+    ["110%"] = 1.1,
+    ["125%"] = 1.25,
+    ["150%"] = 1.5
+}
+
+pcall(function()
+    Window:SetUIScale(
+        ScaleValues[SettingsData.UIScale] or 1
+    )
 end)
 
 ---------------------------------------------------------------------
@@ -231,6 +246,100 @@ WelcomeSection:Paragraph({
     Desc = tostring(#game.Players:GetPlayers())
 })
 
+WelcomeSection:Paragraph({
+    Title = "Executor",
+    Desc = identifyexecutor and identifyexecutor() or "Unknown"
+})
+
+local RunService = game:GetService("RunService")
+local Stats = game:GetService("Stats")
+
+local FPSParagraph = WelcomeSection:Paragraph({
+    Title = "FPS",
+    Desc = "Calculating..."
+})
+
+local PingParagraph = WelcomeSection:Paragraph({
+    Title = "Ping",
+    Desc = "Loading..."
+})
+
+local TimeParagraph = WelcomeSection:Paragraph({
+    Title = "Local Time",
+    Desc = "Loading..."
+})
+
+task.spawn(function()
+    while task.wait(1) do
+        local CurrentTime = os.date("%H:%M:%S")
+
+        pcall(function()
+            TimeParagraph:SetDesc(CurrentTime)
+        end)
+
+        pcall(function()
+            TimeParagraph:Set({
+                Desc = CurrentTime
+            })
+        end)
+    end
+end)
+
+local MemoryParagraph = WelcomeSection:Paragraph({
+    Title = "Memory",
+    Desc = "Loading..."
+})
+
+task.spawn(function()
+    while task.wait(2) do
+        local Memory = string.format("%.1f MB", gcinfo() / 1024)
+
+        pcall(function()
+            MemoryParagraph:SetDesc(Memory)
+        end)
+
+        pcall(function()
+            MemoryParagraph:Set({
+                Desc = Memory
+            })
+        end)
+    end
+end)
+
+local Frames = 0
+local LastUpdate = tick()
+
+RunService.RenderStepped:Connect(function()
+    Frames += 1
+end)
+
+task.spawn(function()
+    while task.wait(1) do
+        local FPS = Frames
+        Frames = 0
+
+        local Ping = "N/A"
+        pcall(function()
+            Ping = Stats.Network.ServerStatsItem["Data Ping"]:GetValueString()
+        end)
+
+        pcall(function()
+            FPSParagraph:Set({
+                Desc = tostring(FPS)
+            })
+
+            PingParagraph:Set({
+                Desc = Ping
+            })
+        end)
+
+        pcall(function()
+            FPSParagraph:SetDesc(tostring(FPS))
+            PingParagraph:SetDesc(Ping)
+        end)
+    end
+end)
+
 ---------------------------------------------------------------------
 -- UNIVERSAL TAB
 ---------------------------------------------------------------------
@@ -323,6 +432,16 @@ MovementSection:Button({
     end
 })
 
+MovementSection:Button({
+    Title = "PoseCTRL",
+    Desc = "Control how your player moves",
+    Icon = "person-standing",
+
+    Callback = function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/synioxide-byte/scripts/main/PoseCTRL.lua"))()
+    end
+})
+
 ---------------------------------------------------------------------
 -- Character
 ---------------------------------------------------------------------
@@ -330,7 +449,7 @@ MovementSection:Button({
 CharacterSection:Button({
     Title = "KFling",
     Desc = "Lets you fling yourself precisely with the keybind K",
-    Icon = "spin",
+    Icon = "rotate-cw",
 
     Callback = function()
         loadstring(game:HttpGet("https://raw.githubusercontent.com/synioxide-byte/scripts/main/KFling.lua"))()
@@ -340,7 +459,7 @@ CharacterSection:Button({
 CharacterSection:Button({
     Title = "Fall",
     Desc = "Lets you push yourself down, or drive on the ground by holding down L",
-    Icon = "fall",
+    Icon = "arrow-down",
 
     Callback = function()
         loadstring(game:HttpGet("https://raw.githubusercontent.com/synioxide-byte/scripts/main/Fall.lua"))()
@@ -405,24 +524,6 @@ PlayerSection:Slider({
 })
 
 PlayerSection:Slider({
-    Title = "Gravity",
-    Desc = "Adjust workspace gravity",
-
-    Value = {
-        Min = 0,
-        Max = 500,
-        Default = workspace.Gravity
-    },
-
-    Step = 1,
-    Flag = "gravity",
-
-    Callback = function(Value)
-        workspace.Gravity = Value
-    end
-})
-
-PlayerSection:Slider({
     Title = "Hip Height",
     Desc = "Adjust character height",
 
@@ -459,6 +560,88 @@ PlayerSection:Slider({
         workspace.CurrentCamera.FieldOfView = Value
     end
 })
+
+PlayerSection:Button({
+    Title = "Reset Character",
+    Desc = "Respawn yourself",
+    Icon = "tombstone",
+
+    Callback = function()
+        game.Players.LocalPlayer.Character:BreakJoints()
+    end
+})
+
+
+local AntiAFKConnection
+
+PlayerSection:Toggle({
+    Title = "Anti AFK",
+    Desc = "Prevents idle kick",
+    Icon = "coffee",
+    Value = false,
+    Flag = "antiafk",
+
+    Callback = function(Value)
+        if Value then
+            local VirtualUser = game:GetService("VirtualUser")
+
+            AntiAFKConnection = game.Players.LocalPlayer.Idled:Connect(function()
+                VirtualUser:CaptureController()
+                VirtualUser:ClickButton2(Vector2.new())
+            end)
+        else
+            if AntiAFKConnection then
+                AntiAFKConnection:Disconnect()
+                AntiAFKConnection = nil
+            end
+        end
+    end
+})
+
+local InfiniteJump = false
+local UIS = game:GetService("UserInputService")
+
+PlayerSection:Toggle({
+    Title = "Infinite Jump",
+    Desc = "Jump without touching ground",
+    Icon = "arrow-up",
+
+    Callback = function(Value)
+        InfiniteJump = Value
+    end
+})
+
+UIS.JumpRequest:Connect(function()
+    if InfiniteJump then
+        local Humanoid = GetHumanoid()
+
+        if Humanoid then
+            Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+        end
+    end
+end)
+
+local Noclip = false
+
+PlayerSection:Toggle({
+    Title = "Noclip",
+    Desc = "Walk through walls",
+    Icon = "scan-line",
+
+    Callback = function(Value)
+        Noclip = Value
+    end
+})
+
+game:GetService("RunService").Stepped:Connect(function()
+    if Noclip and game.Players.LocalPlayer.Character then
+        for _,v in ipairs(game.Players.LocalPlayer.Character:GetDescendants()) do
+            if v:IsA("BasePart") then
+                v.CanCollide = false
+            end
+        end
+    end
+end)
 
 ---------------------------------------------------------------------
 -- UTILITY
@@ -549,14 +732,40 @@ ServerSection:Paragraph({
     Desc = tostring(game.JobId)
 })
 
+ServerSection:Button({
+    Title = "Copy Place ID",
+    Desc = "This can help you making a game detector.",
+    Icon = "copy",
+
+    Callback = function()
+        setclipboard(tostring(game.PlaceId))
+    end
+})
+
+ServerSection:Button({
+    Title = "Copy Rejoin Script",
+    Desc = "This lets you or anyone with the snippet join that exact server.",
+    Icon = "copy-check",
+
+    Callback = function()
+        setclipboard(string.format(
+            "game:GetService('TeleportService'):TeleportToPlaceInstance(%s,'%s',game.Players.LocalPlayer)",
+            game.PlaceId,
+            game.JobId
+        ))
+    end
+})
+
 ServerSection:Paragraph({
     Title = "Server Players",
-    Desc = string.format("%d/%d", #Players:GetPlayers(), Players.MaxPlayers)
+    Desc = string.format("%d/%d", #Players:GetPlayers(), Players.MaxPlayers),
+    Icon = "users-round"
 })
 
 ServerSection:Paragraph({
     Title = "Private Server",
-    Desc = game.PrivateServerId ~= "" and "Yes" or "No"
+    Desc = game.PrivateServerId ~= "" and "Yes" or "No",
+    Icon = "lock"
 })
 
 ServerSection:Button({
@@ -605,6 +814,168 @@ ServerSection:Button({
     end
 })
 
+ServerSection:Button({
+    Title = "Copy Position",
+    Desc = "Copy your current position",
+    Icon = "copy",
+
+    Callback = function()
+        local Root = game.Players.LocalPlayer.Character
+            and game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+        if Root and setclipboard then
+            setclipboard(string.format(
+                "Vector3.new(%.2f, %.2f, %.2f)",
+                Root.Position.X,
+                Root.Position.Y,
+                Root.Position.Z
+            ))
+
+            WindUI:Notify({
+                Title = "Copied",
+                Content = "Position copied to clipboard"
+            })
+        end
+    end
+})
+
+---------------------------------------------------------------------
+-- Environment
+---------------------------------------------------------------------
+
+EnvironmentSection:Slider({
+    Title = "Gravity",
+    Desc = "Adjust workspace gravity",
+
+    Value = {
+        Min = 0,
+        Max = 500,
+        Default = workspace.Gravity
+    },
+
+    Step = 1,
+    Flag = "gravity",
+
+    Callback = function(Value)
+        workspace.Gravity = Value
+    end
+})
+
+-- Time Of Day
+EnvironmentSection:Slider({
+    Title = "Time Of Day",
+    Desc = "Adjust the game clock",
+    
+    Value = {
+        Min = 0,
+        Max = 24,
+        Default = tonumber(string.match(game.Lighting.TimeOfDay, "^(%d+)")) or 12
+    },
+    
+    Step = 1,
+    Flag = "timeofday",
+    
+    Callback = function(Value)
+        game.Lighting.ClockTime = Value
+    end
+})
+
+-- Brightness
+EnvironmentSection:Slider({
+    Title = "Brightness",
+    Desc = "Adjust lighting brightness",
+    
+    Value = {
+        Min = 0,
+        Max = 10,
+        Default = game.Lighting.Brightness
+    },
+    
+    Step = 0.1,
+    Flag = "brightness",
+    
+    Callback = function(Value)
+        game.Lighting.Brightness = Value
+    end
+})
+
+EnvironmentSection:Toggle({
+    Title = "Bloom",
+    Desc = "Enable bloom effect",
+    Icon = "sun",
+    Value = false,
+    Flag = "bloom",
+
+    Callback = function(Value)
+        Bloom.Enabled = Value
+    end
+})
+
+-- Fullbright
+local FullbrightData = {
+    Brightness = game.Lighting.Brightness,
+    Ambient = game.Lighting.Ambient,
+    OutdoorAmbient = game.Lighting.OutdoorAmbient,
+    ClockTime = game.Lighting.ClockTime,
+    GlobalShadows = game.Lighting.GlobalShadows
+}
+
+EnvironmentSection:Toggle({
+    Title = "Fullbright",
+    Desc = "Makes the map fully bright",
+    Icon = "lightbulb",
+    Value = false,
+    Flag = "fullbright",
+
+    Callback = function(Value)
+        if Value then
+            game.Lighting.Brightness = 5
+            game.Lighting.Ambient = Color3.new(1, 1, 1)
+            game.Lighting.OutdoorAmbient = Color3.new(1, 1, 1)
+            game.Lighting.ClockTime = 12
+            game.Lighting.GlobalShadows = false
+        else
+            game.Lighting.Brightness = FullbrightData.Brightness
+            game.Lighting.Ambient = FullbrightData.Ambient
+            game.Lighting.OutdoorAmbient = FullbrightData.OutdoorAmbient
+            game.Lighting.ClockTime = FullbrightData.ClockTime
+            game.Lighting.GlobalShadows = FullbrightData.GlobalShadows
+        end
+    end
+})
+
+local OriginalFogEnd = game.Lighting.FogEnd
+local OriginalFogStart = game.Lighting.FogStart
+
+EnvironmentSection:Toggle({
+    Title = "No Fog",
+    Desc = "Removes fog from the map",
+    Icon = "cloud-off",
+    Value = false,
+    Flag = "nofog",
+
+    Callback = function(Value)
+        getgenv().NoFog = Value
+
+        if Value then
+            game.Lighting.FogStart = 0
+            game.Lighting.FogEnd = 1000000
+
+            task.spawn(function()
+                while getgenv().NoFog do
+                    game.Lighting.FogStart = 0
+                    game.Lighting.FogEnd = 1000000
+                    task.wait(1)
+                end
+            end)
+        else
+            game.Lighting.FogStart = OriginalFogStart
+            game.Lighting.FogEnd = OriginalFogEnd
+        end
+    end
+})
+
+
 ---------------------------------------------------------------------
 -- MM2
 ---------------------------------------------------------------------
@@ -612,7 +983,6 @@ ServerSection:Button({
 MM2:Button({
     Title = "YARHM",
     Desc = "Overall the best MM2/Universal Script.",
-    Icon = "knife",
 
     Callback = function()
         local src = ""
@@ -629,6 +999,50 @@ MM2:Button({
         end
 
         loadstring(src)()
+    end
+})
+
+MM2:Button({
+    Title = "Zero Point",
+    Desc = "Better than YARHM in some ways, but is distractive.",
+    Callback = function()
+        loadstring(game:HttpGet("https://scriptblox.com/raw/Murder-Mystery-2-Best-MM2-Zero-Point-Kill-All-Coin-farm-Live-Trade-Helper!-226629"))()
+    end
+})
+
+---------------------------------------------------------------------
+-- FTAP
+---------------------------------------------------------------------
+
+FTAP:Button({
+    Title = "Player Hub",
+    Desc = "Worse than Blitz Hub keyed, but in some places better than Blitz Hub keyless.",
+    Callback = function()
+        loadstring(game:HttpGet("https://scriptblox.com/raw/Fling-Things-and-People-FTAP-Player-Hub-227209"))()
+    end
+})
+
+FTAP:Button({
+    Title = "Player Hub",
+    Desc = "Worse than Blitz Hub keyed, but in some places better than Blitz Hub keyless.",
+    Callback = function()
+        loadstring(game:HttpGet("https://scriptblox.com/raw/Fling-Things-and-People-FTAP-Player-Hub-227209"))()
+    end
+})
+
+FTAP:Button({
+    Title = "Blitz Hub",
+    Desc = "Keyless, some features don't function and it's old.",
+    Callback = function()
+        loadstring(game:HttpGet("https://scriptblox.com/raw/Fling-Things-and-People-Blitz-Hub-Crack-Key-Is-25ms-43155"))()
+    end
+})
+
+FTAP:Button({
+    Title = "Blitz Hub",
+    Desc = "Keyed. The best FTAP Script Hub.",
+    Callback = function()
+        loadstring(game:HttpGet("https://scriptblox.com/raw/Fling-Things-and-People-FTAP-BLITZ-43504"))()
     end
 })
 
@@ -658,7 +1072,7 @@ Settings:Dropdown({
         "OLED"
     },
 
-    Value = "OLED",
+    Value = SettingsData.Theme,
     Multi = false,
     Locked = false,
     Flag = "theme_select",
@@ -667,13 +1081,16 @@ Settings:Dropdown({
         SettingsData.Theme = Theme
         SaveSettings()
 
-        WindUI:SetTheme(Theme)
+        if not AutoTheme then
+            WindUI:SetTheme(Theme)
+        end
 
-        Window:Notify({
+        WindUI:Notify({
             Title = "Theme Changed",
             Content = Theme
         })
     end
+
 })
 
 local sound = Instance.new("Sound")
@@ -683,48 +1100,53 @@ sound.Volume = 0
 sound.Parent = workspace
 
 local fadeSpeed = 0.05
-local musicEnabled = false
+local musicEnabled = SettingsData.HubMusic
 local started = false
+local musicTransition = 0
 
 local function fadeIn()
-    task.spawn(function()
-        if not started then
-            started = true
-            sound:Play()
-        else
-            sound:Resume()
-        end
+    musicTransition += 1
+    local current = musicTransition
 
-        while sound.Volume < 1 and musicEnabled do
-            sound.Volume = math.min(sound.Volume + fadeSpeed, 1)
-            task.wait()
-        end
-    end)
+    if not started then
+        started = true
+        sound:Play()
+    else
+        sound:Resume()
+    end
+
+    while sound.Volume < 1 and musicEnabled and current == musicTransition do
+        sound.Volume = math.min(sound.Volume + fadeSpeed, 1)
+        task.wait()
+    end
 end
 
 local function fadeOut()
-    task.spawn(function()
-        while sound.Volume > 0 and not musicEnabled do
-            sound.Volume = math.max(sound.Volume - fadeSpeed, 0)
-            task.wait()
-        end
+    musicTransition += 1
+    local current = musicTransition
 
-        if sound.Volume <= 0 then
-            sound:Pause()
-        end
-    end)
+    while sound.Volume > 0 and not musicEnabled and current == musicTransition do
+        sound.Volume = math.max(sound.Volume - fadeSpeed, 0)
+        task.wait()
+    end
+
+    if current == musicTransition and sound.Volume <= 0 then
+        sound:Pause()
+    end
 end
 
 Settings:Toggle({
     Title = "Hub Music",
     Desc = "Play background music",
 
-    Value = false,
+    Value = SettingsData.HubMusic,
     Flag = "hub_music",
 
     Callback = function(Value)
         musicEnabled = Value
 
+        SettingsData.HubMusic = Value
+        SaveSettings()
         if Value then
             fadeIn()
         else
@@ -735,7 +1157,7 @@ Settings:Toggle({
 
 Window:OnOpen(function()
     if musicEnabled then
-        fadeIn()
+        task.spawn(fadeIn)
     end
 end)
 
@@ -744,7 +1166,6 @@ Window:OnClose(function()
         task.spawn(function()
             musicEnabled = false
             fadeOut()
-            task.wait(1)
             musicEnabled = true
         end)
     end
@@ -756,32 +1177,41 @@ Window:OnClose(function()
     })
 end)
 
-local AutoTheme = false
+local AutoTheme = SettingsData.AutoTheme
+
+local function GetAutoTheme()
+    local Hour = tonumber(os.date("%H"))
+
+    if Hour >= 8 and Hour < 17 then
+        return "Light"
+    else
+        return "OLED"
+    end
+end
 
 local function UpdateTheme()
     if not AutoTheme then
         return
     end
 
-    local Hour = tonumber(os.date("%H"))
+    local Theme = GetAutoTheme()
 
-    if Hour >= 8 and Hour < 17 then
-        WindUI:SetTheme("Light")
-    else
-        WindUI:SetTheme("OLED")
-    end
+    WindUI:SetTheme(Theme)
 end
 
 Settings:Toggle({
     Title = "Auto Theme",
     Desc = "Light during the day, OLED at night",
 
-    Value = false,
+    Value = SettingsData.AutoTheme,
     Locked = false,
     Flag = "auto_theme",
 
     Callback = function(Value)
         AutoTheme = Value
+
+        SettingsData.AutoTheme = Value
+        SaveSettings()
 
         if Value then
             UpdateTheme()
@@ -792,6 +1222,9 @@ Settings:Toggle({
                 Duration = 3
             })
         else
+            -- Restore the user's saved theme
+            WindUI:SetTheme(SettingsData.Theme)
+
             WindUI:Notify({
                 Title = "Auto Theme",
                 Content = "Disabled",
@@ -806,6 +1239,53 @@ task.spawn(function()
         UpdateTheme()
     end
 end)
+
+-- Apply theme after UI loads
+if AutoTheme then
+    UpdateTheme()
+else
+    WindUI:SetTheme(SettingsData.Theme)
+end
+
+if musicEnabled then
+    fadeIn()
+end
+
+Settings:Dropdown({
+    Title = "UI Scale",
+    Desc = "Adjust interface size. (WARNING! This feature is glitchy. Use 110% for the best experience)",
+
+    Values = {
+        "75%",
+        "90%",
+        "100%",
+        "110%",
+        "125%",
+        "150%"
+    },
+
+    Value = SettingsData.UIScale or "100%",
+    Multi = false,
+    Flag = "ui_scale",
+
+    Callback = function(Value)
+        SettingsData.UIScale = Value
+        SaveSettings()
+
+        local Scale = ScaleValues[Value] or 1
+
+        pcall(function()
+            Window:SetUIScale(Scale)
+        end)
+
+        WindUI:Notify({
+            Title = "UI Scale",
+            Content = "Set to " .. Value,
+            Duration = 3
+        })
+    end
+})
+
 
 ---------------------------------------------------------------------
 -- Credits
@@ -824,4 +1304,28 @@ Credits:Paragraph({
 Credits:Paragraph({
     Title = "Synioxide",
     Desc = "Making Synium Hub."
+})
+
+---------------------------------------------------------------------
+-- NDS
+---------------------------------------------------------------------
+
+NDS:Button({
+    Title = "Project Gravity",
+    Desc = "Lets you control parts with awesome shapes.",
+    Icon = "orbit",
+
+    Callback = function()
+        loadstring(game:HttpGet("https://rawscripts.net/raw/Natural-Disaster-Survival-Project-Gravity-NDS-239526"))()
+    end
+})
+
+NDS:Button({
+    Title = "NDS Surf",
+    Desc = "Lets you surf with unanchored parts",
+    Icon = "waves",
+
+    Callback = function()
+        loadstring(game:HttpGet("https://pastefy.app/pTL8Ck6D/raw"))()
+    end
 })
